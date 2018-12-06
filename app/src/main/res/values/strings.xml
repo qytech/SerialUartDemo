@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">SerialUartDemo</string>
+    <string name="query_id">查询ID号</string>
+    <string name="set_switch_status">设置开关状态</string>
+    <string name="get_switch_status">读取开关状态</string>
+    <string name="encrypt_message">加密处理</string>
+</resources>
