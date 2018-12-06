@@ -24,14 +24,14 @@ public class SerialPort {
         System.loadLibrary("native-lib");
     }
 
-//    public native int open(String path);
-//
-//    public native int close();
+    public native int open(String path);
+
+    public native int close();
 
 
     public native int write(byte[] message);
 
-    public native byte[] read();
+    public native String read();
 
 
 }
