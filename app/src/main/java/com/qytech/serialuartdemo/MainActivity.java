@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
-import android.text.TextUtils;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -21,10 +20,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         m_tvMessage = findViewById(R.id.tv_read_msg);
-        SerialPort.getInstance().open("/dev/ttyS1");
+        SerialPort.getInstance().open("/dev/ttysWK2");
         ReadThread thread = new ReadThread();
-
         thread.start();
+        m_tvMessage.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                SerialPort.getInstance().write("test".getBytes());
+            }
+        }, 3000);
 
     }
 
@@ -48,15 +52,19 @@ public class MainActivity extends AppCompatActivity {
             super.run();
             try {
                 while (mRunning && !interrupted()) {
-                    String result = SerialPort.getInstance().read();
-                    if (!TextUtils.isEmpty(result)) {
-                        Log.d(TAG, "running == >: " + result);
+                    byte[] result = SerialPort.getInstance().read();
+                    if (result != null && result.length > 0) {
+                        Log.d(TAG, "serialUartOut size is : " + result.length);
+                        for (byte aResult : result) {
+                            Log.d(TAG, "run: " + String.format("%x", aResult));
+                        }
+                        Log.d(TAG, "run: " + new String(result));
                         Message msg = mHandler.obtainMessage();
                         msg.what = 0x01;
-                        msg.obj = result;
+                        msg.obj = new String(result);
                         mHandler.sendMessage(msg);
                     }
-                    Thread.sleep(1000);
+                    Thread.sleep(500);
                 }
             } catch (Exception e) {
                 e.printStackTrace();

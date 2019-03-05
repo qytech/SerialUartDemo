@@ -88,11 +88,11 @@ Java_com_qytech_serialuartdemo_SerialPort_close(JNIEnv *env, jobject /*this*/) {
     return close(fd);
 }
 
-extern "C" JNIEXPORT jstring JNICALL
+extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_qytech_serialuartdemo_SerialPort_read(JNIEnv *env, jobject /*this*/) {
     fd_set rd;
     struct timeval tv;
-    char buf[11];
+    char buf[64];
     int ret = 0;
     FD_ZERO(&rd);
     FD_SET(fd, &rd);
@@ -110,25 +110,30 @@ Java_com_qytech_serialuartdemo_SerialPort_read(JNIEnv *env, jobject /*this*/) {
 
         while (1) {
             read(fd, buf + i, 1);
-            if ((buf[i] == 0x03) && i >= 8)  //0x3e:">"
+            LOGE("write message %x  !", buf[i]);
+            if ((buf[i] == 0x20)){
                 break;
+            }
             i++;
         }
     }
-    char c_data[5] = {0};
-    char g_data[5] = {0};
-    if (i == 8)  //
-    {
-        memcpy(c_data, buf + 3, 4);
-        sprintf(g_data, "%u\n",
-                c_data[0] * 256 * 256 * 256 + c_data[1] * 256 * 256 + c_data[2] * 256 + c_data[3]);
-    } else if (i == 9) {
-        memcpy(c_data, buf + 3, 5);
-        sprintf(g_data, "%u\n",
-                c_data[1] * 256 * 256 * 256 + c_data[2] * 256 * 256 + c_data[3] * 256 + c_data[4]);
-    }
-    jstring str = charTojstring(env, g_data);//
-    return str;
+     jbyteArray jArray = env->NewByteArray(strlen(buf));
+     env->SetByteArrayRegion(jArray, 0, strlen(buf),
+                                            reinterpret_cast<const jbyte *>(buf));
+    //char c_data[5] = {0};
+    //char g_data[5] = {0};
+    //if (i == 8)  //
+    //{
+    //   memcpy(c_data, buf + 3, 4);
+    //    sprintf(g_data, "%u\n",
+    //            c_data[0] * 256 * 256 * 256 + c_data[1] * 256 * 256 + c_data[2] * 256 + c_data[3]);
+    //} else if (i == 9) {
+    //    memcpy(c_data, buf + 3, 5);
+    //    sprintf(g_data, "%u\n",
+    //            c_data[1] * 256 * 256 * 256 + c_data[2] * 256 * 256 + c_data[3] * 256 + c_data[4]);
+    //}
+    //jstring str = charTojstring(env, buf);//
+    return jArray;
 }
 
 extern "C" JNIEXPORT jint JNICALL
