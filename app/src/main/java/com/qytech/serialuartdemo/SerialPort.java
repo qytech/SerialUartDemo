@@ -31,7 +31,7 @@ public class SerialPort {
 
     public native int write(byte[] message);
 
-    public native String read();
+    public native byte[] read();
 
 
 }
