@@ -8,6 +8,7 @@
 
 
 static const char *TAG = "SerialPort";
+static const int BUFF_LEN = 512;
 
 #define LOGI(fmt, args...) __android_log_print(ANDROID_LOG_INFO,  TAG, fmt, ##args)
 #define LOGD(fmt, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, fmt, ##args)
@@ -70,71 +71,68 @@ char *jstringToChar(JNIEnv *env, jstring jstr) {
 }
 
 
-//extern "C" JNIEXPORT jint JNICALL
-//Java_com_qytech_serialuartdemo_SerialPort_open(JNIEnv *env, jobject /*this*/, jstring _path) {
-//    const char *path = jstringToChar(env, _path);
-//    fd = open(path, O_RDWR);
-//    LOGD("open device result is %d", fd);
-//    if (fd < 0) {
-//        LOGE("open device %s fail !", path);
-//        return FALSE;
-//    }
-//    set_config(fd);
-//    return TRUE;
-//}
-//
-//extern "C" JNIEXPORT jint JNICALL
-//Java_com_qytech_serialuartdemo_SerialPort_close(JNIEnv *env, jobject /*this*/) {
-//    return close(fd);
-//}
+extern "C" JNIEXPORT jint JNICALL
+Java_com_qytech_serialuartdemo_SerialPort_open(JNIEnv *env, jobject /*this*/, jstring _path) {
+    const char *path = jstringToChar(env, _path);
+    fd = open(path, O_RDWR);
+    LOGD("open device result is %d", fd);
+    if (fd < 0) {
+        LOGE("open device %s fail !", path);
+        return FALSE;
+    }
+    set_config(fd);
+    return TRUE;
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_qytech_serialuartdemo_SerialPort_close(JNIEnv *env, jobject /*this*/) {
+    return close(fd);
+}
 
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_qytech_serialuartdemo_SerialPort_read(JNIEnv *env, jobject /*this*/) {
+    fd_set rd;
+    struct timeval tv;
+    char buf[BUFF_LEN];
+    int ret = 0;
+    FD_ZERO(&rd);
+    FD_SET(fd, &rd);
 
-    fd = open("/dev/ttyS4", O_RDWR);
-    LOGD("open device result is %d", fd);
-    if (fd < 0) {
-        LOGE("open device %s fail !", "/dev/ttyS4");
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    int i = 0;
+    ret = select(fd + 1, &rd, NULL, NULL, &tv);
+    if (ret < 0)
         return NULL;
-    }
-    set_config(fd);
-    unsigned char buf[512];
-
-    ssize_t ret = read(fd, buf, strlen(reinterpret_cast<const char *>(buf)));
-    LOGD("read result %d,buffer %s", ret, buf);
-    if (ret < 0) {
+    else if (ret == 0)
         return NULL;
-        //charTojstring(env, "read message fail !");
 
 
-    }
-    for (int i = 0; i < 5; i++) {
-        LOGD("message read is %d , %x", i, buf[i]);
-    }
-
-    jbyteArray jArray = env->NewByteArray(strlen(reinterpret_cast<const char *>(buf)));
-    env->SetByteArrayRegion(jArray, 0, strlen(reinterpret_cast<const char *>(buf)),
-                            reinterpret_cast<const jbyte *>(buf));
-    close(fd);
+    memset(buf, '\0', sizeof(buf));
+    read(fd, buf,BUFF_LEN);
+   /* while (1) {
+        read(fd, buf + i, 1);
+        LOGE("read message %x ", buf[i]);
+        if (buf[i] == 20){
+            LOGE("read message %d !\n", strlen(buf));
+            break;
+        }
+        i++;
+    }*/
+    //第4位是数据长度位,加上前面4位和1位结尾 buf[3] + 5
+    jbyteArray jArray = env->NewByteArray(buf[3]+5);
+    env->SetByteArrayRegion(jArray, 0, buf[3]+5,
+                                            reinterpret_cast<const jbyte *>(buf));
     return jArray;
 }
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_qytech_serialuartdemo_SerialPort_write(JNIEnv *env, jobject /*this*/,
                                                 jbyteArray _message) {
-    fd = open("/dev/ttyS4", O_RDWR);
-    LOGD("open device result is %d", fd);
-    if (fd < 0) {
-        LOGE("open device %s fail !", "/dev/ttyS4");
-        return NULL;
-    }
-    set_config(fd);
-    //const char *message = jstringToChar(env, _message);
     jbyte *bBuffer = env->GetByteArrayElements(_message, 0);
     unsigned char *buf = (unsigned char *) bBuffer;
     ssize_t ret = write(fd, buf, static_cast<size_t>(env->GetArrayLength(_message)));
     LOGD("write result %d", ret);
-    close(fd);
     if (ret < 0) {
         LOGE("write message %s fail !", buf);
         return FALSE;

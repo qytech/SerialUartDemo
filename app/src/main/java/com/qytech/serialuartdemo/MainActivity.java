@@ -8,6 +8,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import java.util.Locale;
+
 import timber.log.Timber;
 
 public class MainActivity extends AppCompatActivity {
@@ -31,12 +33,12 @@ public class MainActivity extends AppCompatActivity {
         m_btnQueryId.setOnClickListener(mOnClickListener);
         m_btnGetStatus.setOnClickListener(mOnClickListener);
         m_btnEncryptMessage.setOnClickListener(mOnClickListener);
-//        SerialPort.getInstance().open("/dev/ttyS4");
+        SerialPort.getInstance().open("/dev/ttyS3");
         ReadThread thread = new ReadThread();
 
         thread.start();
 
-        Timber.d("get checkout sum AA750300 %s",getCheckSum(0xAA,0x75,0x03));
+        Timber.d("get checkout sum AA7504 %s", getCheckSum(0xAA, 0x75, 0x04, 0x04, 0x01, 0x01, 0x05, 0x00));
     }
 
     private View.OnClickListener mOnClickListener = new View.OnClickListener() {
@@ -47,19 +49,20 @@ public class MainActivity extends AppCompatActivity {
                 switch (view.getId()) {
                     case R.id.btn_query_id:
                         byte[] arr = toBytes("AA750100DE");//0xAA0x750x010x000xDE
-                        for (int i = 0; i < arr.length; i++) {
-                            Timber.d("item %d result is %x", i, arr[i]);
-                        }
                         SerialPort.getInstance().write(arr);
+                        //回传消息为 55 7A 01 01 01 2E
                         break;
                     case R.id.btn_set_status:
                         SerialPort.getInstance().write(toBytes("AA75020401010500DC"));
+                        //回传消息为 55 7A 02 18 01 00 02 00 03 00 04 00 05 00 06 00 07 00 08 00 09 00 0A 00 0B 00 0C 00 39
                         break;
                     case R.id.btn_get_status:
                         SerialPort.getInstance().write(toBytes("AA750300DC"));
+                        //回传消息为 55 7A 03 18 01 00 02 00 03 00 04 00 05 00 06 00 07 00 08 00 09 00 0A 00 0B 00 0C 00 38
                         break;
                     case R.id.btn_encrypt_message:
-//                        SerialPort.getInstance().write("0x04");
+                        SerialPort.getInstance().write(toBytes("AA75040401010500DA"));
+                        //回传消息55 7A 04 00 2b
                         break;
                 }
             } catch (Exception e) {
@@ -73,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
         public boolean handleMessage(Message msg) {
             switch (msg.what) {
                 case 0x01:
-                    m_tvMessage.setText("回读到的消息为:" + String.valueOf(msg.obj));
+                    m_tvMessage.setText(String.format(Locale.getDefault(), "回读到的消息为:%s", msg.obj));
                     break;
             }
             return false;
@@ -89,10 +92,15 @@ public class MainActivity extends AppCompatActivity {
                 while (mRunning && !interrupted()) {
                     byte[] result = SerialPort.getInstance().read();
                     if (result != null && result.length > 0) {
+                        byte[] res = new byte[result.length - 5];
+                        System.arraycopy(result, 4, res, 0, result[3]);
+                        Timber.d("\r\n");
                         Message msg = mHandler.obtainMessage();
                         msg.what = 0x01;
-                        msg.obj = bytesToHexFun(result);
+                        msg.obj = String.format(Locale.getDefault(), "\n返回结果：%s \n数据结果：%s", bytesToHexFun(result), bytesToHexFun(res));
                         mHandler.sendMessage(msg);
+                        Timber.d("ReadThread %s", bytesToHexFun(result));
+
                     }
                     Thread.sleep(1000);
                 }
@@ -119,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mRunning = false;
-//        SerialPort.getInstance().close();
+        SerialPort.getInstance().close();
     }
 
     public byte[] toBytes(String str) {
@@ -137,20 +145,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public String bytesToHexFun(byte[] bytes) {
-        StringBuilder buf = new StringBuilder(bytes.length * 2);
+        StringBuilder buf = new StringBuilder();
         for (byte b : bytes) { // 使用String的format方法进行转换
-            buf.append(String.format("%02x", new Integer(b & 0xff)));
+            buf.append(String.format("%02X ", b & 0xff));
         }
 
         return buf.toString();
     }
 
 
-    public String getCheckSum(int ... values){
+    public String getCheckSum(int... values) {
         int result = 0x00;
-        for (int item :values){
-            result^= item;
+        for (int item : values) {
+            result ^= item;
         }
-     return Integer.toHexString(result);
+        return Integer.toHexString(result);
     }
 }
