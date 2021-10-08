@@ -11,19 +11,24 @@ import java.io.OutputStream
 enum class CarStatus(val value: String, val message: String, val color: Color) {
     EMPTY("LED1", "空车", Color.Red),
     SUBSCRIBE("LED0", "预约", Color.Blue),
-    RUNING("LED2", "运行", Color.Yellow),
+    RUNNING("LED2", "运行", Color.Yellow),
     REST("LED3", "休息", Color.Green)
 }
 
 class SerialPortViewModel : ViewModel() {
+    companion object {
+        const val DEFAULT_DEVICE = "/dev/ttyS4"
+    }
+
     private var serialPort: SerialPort? = null
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
-    val devicesList = SerialPortFinder().allDevicesPath
+    private val devicesList = SerialPortFinder().allDevicesPath
+
 
     init {
         if (devicesList.isNotEmpty()) {
-            selectDevice(devicesList[0])
+            selectDevice(DEFAULT_DEVICE)
         }
     }
 

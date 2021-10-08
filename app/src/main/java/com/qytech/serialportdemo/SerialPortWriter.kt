@@ -25,25 +25,25 @@ fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
         mutableStateOf(0)
     }
 
-    var selectedIndex by remember {
-        mutableStateOf(0)
-    }
+//    var selectedIndex by remember {
+//        mutableStateOf(0)
+//    }
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        LazyColumn {
-            itemsIndexed(viewModel.devicesList, { _, path -> path }) { index, path ->
-
-                Row(Modifier.padding(vertical = 16.dp)) {
-                    RadioButton(selected = selectedIndex == index, onClick = {
-                        selectedIndex = index
-                        viewModel.selectDevice(path)
-                    })
-                    Text(text = "device path $path")
-                }
-            }
-        }
+//        LazyColumn {
+//            itemsIndexed(viewModel.devicesList, { _, path -> path }) { index, path ->
+//
+//                Row(Modifier.padding(vertical = 16.dp)) {
+//                    RadioButton(selected = selectedIndex == index, onClick = {
+//                        selectedIndex = index
+//                        viewModel.selectDevice(path)
+//                    })
+//                    Text(text = "device path $path")
+//                }
+//            }
+//        }
         Button(
             onClick = {
                 current++
