@@ -18,38 +18,38 @@ enum class CarStatus(val value: String, val message: String, val color: Color) {
 class SerialPortViewModel : ViewModel() {
     companion object {
         const val DEFAULT_DEVICE = "/dev/ttyS4"
+        const val DEVICE_TTYS3 = "/dev/ttyS3"
     }
 
-    private var serialPort: SerialPort? = null
-    private var inputStream: InputStream? = null
-    private var outputStream: OutputStream? = null
+    private var serialPortList: MutableList<SerialPort> = ArrayList()
+
+
     private val devicesList = SerialPortFinder().allDevicesPath
 
 
     init {
         if (devicesList.isNotEmpty()) {
             selectDevice(DEFAULT_DEVICE)
+            selectDevice(DEVICE_TTYS3)
         }
     }
 
-    fun selectDevice(path: String?) {
+    fun selectDevice(path: String?, baudRate: Int = 115200, flags: Int = 0) {
         if (path.isNullOrEmpty() || path !in devicesList) {
             return
         }
         runCatching {
-            serialPort = SerialPort(File(path), 115200, 0)
-            inputStream = serialPort?.inputStream
-            outputStream = serialPort?.outputStream
-            outputStream?.write(CarStatus.EMPTY.value.toByteArray())
+            serialPortList.add(SerialPort(File(path), baudRate, flags))
         }
     }
 
+
     fun write(status: CarStatus) {
-        outputStream?.write(status.value.toByteArray())
+        serialPortList.forEach { it.outputStream.write(status.value.toByteArray()) }
     }
 
     override fun onCleared() {
         super.onCleared()
-        serialPort?.close()
+        serialPortList.forEach { it.close() }
     }
 }
