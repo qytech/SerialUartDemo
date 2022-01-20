@@ -2,14 +2,9 @@ package com.qytech.serialportdemo
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,79 +16,66 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
-    var current by remember {
-        mutableStateOf(0)
-    }
-
-//    var selectedIndex by remember {
-//        mutableStateOf(0)
-//    }
+    val statusS3 by viewModel.readStatusS3.collectAsState()
+    val statusS4 by viewModel.readStatusS4.collectAsState()
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-//        LazyColumn {
-//            itemsIndexed(viewModel.devicesList, { _, path -> path }) { index, path ->
-//
-//                Row(Modifier.padding(vertical = 16.dp)) {
-//                    RadioButton(selected = selectedIndex == index, onClick = {
-//                        selectedIndex = index
-//                        viewModel.selectDevice(path)
-//                    })
-//                    Text(text = "device path $path")
-//                }
-//            }
-//        }
-        Button(
-            onClick = {
-                current++
-                if (current >= CarStatus.values().size) {
-                    current = 0
-                }
-                viewModel.write(CarStatus.values()[current])
-            },
-            modifier = Modifier
-                .padding(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                backgroundColor = animateColorAsState(
-                    targetValue = CarStatus.values()[current].color,
-                    tween(600)
-                ).value,
-                contentColor = Color.White
+        Row {
+            StatusButton(
+                modifier = Modifier
+                    .weight(1.0f)
+                    .padding(16.dp),
+                onClickListener = { viewModel.write("LEDR") },
+                status = statusS3,
+                text = "ttyS4 Status: ${statusS3.message} "
             )
-        ) {
-            Text(
-                text = "当前状态为: ${CarStatus.values()[current].message}",
-                style = MaterialTheme.typography.h6,
+            StatusButton(
+                modifier = Modifier
+                    .weight(1.0f)
+                    .padding(16.dp),
+                onClickListener = { viewModel.write("LEDR") },
+                status = statusS4,
+                text = "ttyS4 Status: ${statusS4.message} "
             )
         }
         LazyRow {
-            items(CarStatus.values()) { status ->
-                Button(
-                    onClick = {
-                        viewModel.write(status)
-                        current = status.ordinal
-                    },
+            items(CarStatus.values().filter { it.value.isNotEmpty() }) { status ->
+                StatusButton(
                     modifier = Modifier
+                        .width(200.dp)
                         .padding(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = animateColorAsState(
-                            targetValue = status.color,
-                            tween(600)
-                        ).value,
-                        contentColor = Color.White
-                    )
-                ) {
-                    Text(
-                        text = status.message,
-                        style = MaterialTheme.typography.h6,
-                    )
-                }
+                    onClickListener = {
+                        viewModel.write(status)
+                    },
+                    status = status,
+                    text = status.message
+                )
             }
         }
-
     }
 
+}
+
+@Composable
+fun StatusButton(modifier: Modifier, onClickListener: () -> Unit, status: CarStatus, text: String) {
+    Button(
+        onClick = onClickListener,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = animateColorAsState(
+                targetValue = status.color,
+                tween(600)
+            ).value,
+            contentColor = Color.White
+        )
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.h6,
+        )
+    }
 }
 
 @Preview
