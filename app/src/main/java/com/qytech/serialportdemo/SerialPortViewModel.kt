@@ -40,6 +40,8 @@ class SerialPortViewModel : ViewModel() {
     private val _readStatusS3 = MutableStateFlow(CarStatus.NULL)
     val readStatusS3: StateFlow<CarStatus> = _readStatusS3
 
+    var isMarquee = false
+
     init {
         if (devicesList.isNotEmpty()) {
             selectDevice(DEVICE_TTYS4)
@@ -67,6 +69,24 @@ class SerialPortViewModel : ViewModel() {
     fun write(value: String) {
         Timber.d("write $value")
         serialPortList.forEach { it.outputStream.write(value.toByteArray()) }
+    }
+
+    fun startMarquee() {
+        isMarquee = true
+        viewModelScope.launch(Dispatchers.IO) {
+            while (isActive && isMarquee) {
+                CarStatus.values().forEach { status ->
+                    if (status != CarStatus.NULL && isMarquee) {
+                        write(status)
+                        delay(5000L)
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopMarquee() {
+        isMarquee = false
     }
 
     private fun readSerialPort(serialPort: SerialPort, path: String) {

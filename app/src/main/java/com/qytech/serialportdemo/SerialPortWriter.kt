@@ -18,10 +18,34 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
     val statusS3 by viewModel.readStatusS3.collectAsState()
     val statusS4 by viewModel.readStatusS4.collectAsState()
+    var isMarquee by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Switch(checked = isMarquee,
+                onCheckedChange = { checked ->
+                    isMarquee = checked
+                    if (isMarquee) {
+                        viewModel.startMarquee()
+                    } else {
+                        viewModel.stopMarquee()
+                    }
+                })
+            Text(
+                modifier = Modifier.padding(16.dp),
+                text = "Switch LED marquee",
+                style = MaterialTheme.typography.h5,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         Row {
             StatusButton(
                 modifier = Modifier
@@ -29,7 +53,7 @@ fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
                     .padding(16.dp),
                 onClickListener = { viewModel.write("LEDR") },
                 status = statusS3,
-                text = "ttyS4 Status: ${statusS3.message} "
+                text = "ttyS3 Status: ${statusS3.message} "
             )
             StatusButton(
                 modifier = Modifier
