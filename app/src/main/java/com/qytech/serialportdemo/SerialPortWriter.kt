@@ -2,17 +2,24 @@ package com.qytech.serialportdemo
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.qytech.serialportdemo.model.CarLED
 
 @Composable
 fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
@@ -20,7 +27,9 @@ fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
     val statusS4 by viewModel.readStatusS4.collectAsState()
     var isMarquee by remember { mutableStateOf(false) }
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
@@ -46,12 +55,14 @@ fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        Text("Query Status", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+
         Row {
             StatusButton(
                 modifier = Modifier
                     .weight(1.0f)
                     .padding(16.dp),
-                onClickListener = { viewModel.write("LEDR") },
+                onClickListener = { viewModel.readCarStatus() },
                 status = statusS3,
                 text = "ttyS3 Status: ${statusS3.message} "
             )
@@ -59,31 +70,62 @@ fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
                 modifier = Modifier
                     .weight(1.0f)
                     .padding(16.dp),
-                onClickListener = { viewModel.write("LEDR") },
+                onClickListener = { viewModel.readCarStatus() },
                 status = statusS4,
                 text = "ttyS4 Status: ${statusS4.message} "
             )
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text("Download Charset", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+
         LazyRow {
-            items(CarStatus.values().filter { it.value.isNotEmpty() }) { status ->
+            items(CarLED.Status.values().filter { it.message.isNotEmpty() }) { status ->
                 StatusButton(
                     modifier = Modifier
                         .width(200.dp)
                         .padding(16.dp),
                     onClickListener = {
-                        viewModel.write(status)
+                        viewModel.writeCharset(status)
                     },
                     status = status,
                     text = status.message
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text("Set Status", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+
+        LazyRow {
+            items(CarLED.Status.values().filter { it.message.isNotEmpty() }) { status ->
+                StatusButton(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .padding(16.dp),
+                    onClickListener = {
+                        viewModel.writeCarStatus(status)
+                    },
+                    status = status,
+                    text = status.message
+                )
+            }
+        }
+
+
     }
 
 }
 
 @Composable
-fun StatusButton(modifier: Modifier, onClickListener: () -> Unit, status: CarStatus, text: String) {
+fun StatusButton(
+    modifier: Modifier,
+    onClickListener: () -> Unit,
+    status: CarLED.Status,
+    text: String
+) {
     Button(
         onClick = onClickListener,
         modifier = modifier,
