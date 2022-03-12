@@ -6,6 +6,8 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
@@ -16,9 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import com.qytech.serialportdemo.ui.theme.SerialPortDemoTheme
-import timber.log.Timber
+import java.io.File
+
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
 
     private val permissions = arrayOf(
         Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -34,6 +39,15 @@ class MainActivity : ComponentActivity() {
         if (denied) {
             ActivityCompat.requestPermissions(this, permissions, 0x01)
         }
+        copyFirmware()
+
+
+        requestPermissionLauncher =
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+                if (!isGranted) {
+                    ActivityCompat.requestPermissions(this, permissions, 0x01)
+                }
+            }
         setContent {
             SerialPortDemoTheme {
                 // A surface container using the 'background' color from the theme
@@ -45,6 +59,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun copyFirmware() {
+        val firmware = File(filesDir.path, "ledMatrixApp.bin")
+        if (!firmware.exists()) {
+            firmware.createNewFile()
+        }
+        assets.open("ledMatrixApp.bin").use {
+            firmware.writeBytes(it.readBytes())
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        requestPermissionLauncher.unregister()
     }
 }
 
