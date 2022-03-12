@@ -1,13 +1,14 @@
 package com.qytech.serialportdemo
 
+import android.content.Context
 import android_serialport_api.SerialPort
 import android_serialport_api.SerialPortFinder
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qytech.serialportdemo.model.CarLED
 import com.qytech.serialportdemo.utils.toHexByteArray
 import com.qytech.serialportdemo.utils.toHexString
+import com.qytech.serialportdemo.utils.toUInt32ByteArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +25,7 @@ class SerialPortViewModel : ViewModel() {
         const val DEVICE_TTYS3 = "/dev/ttyS3"
     }
 
-    private val byteArray = ByteArray(128).apply {
+    private val headerArray = ByteArray(5).apply {
         this[0] = 0x4C
         this[1] = 0x45
         this[2] = 0x44
@@ -35,10 +36,10 @@ class SerialPortViewModel : ViewModel() {
 
     private val devicesList = SerialPortFinder().allDevicesPath
 
-    private val _readStatusS4 = MutableStateFlow(CarLED.Status.NULL)
+    private val _readStatusS4 = MutableStateFlow(CarLED.Status.CLOSE)
     val readStatusS4: StateFlow<CarLED.Status> = _readStatusS4
 
-    private val _readStatusS3 = MutableStateFlow(CarLED.Status.NULL)
+    private val _readStatusS3 = MutableStateFlow(CarLED.Status.CLOSE)
     val readStatusS3: StateFlow<CarLED.Status> = _readStatusS3
 
     var isMarquee = false
@@ -61,17 +62,14 @@ class SerialPortViewModel : ViewModel() {
         }
     }
 
+
     private fun getCommandBytes(command: Byte, dataLength: Byte, vararg data: Byte): ByteArray {
-        byteArray[CarLED.COMMAND_BYTE_INDEX] = command
-        byteArray[CarLED.DATA_LENGTH_INDEX] = dataLength
-        data.forEachIndexed { index, byte ->
-            byteArray[CarLED.DATA_START_INDEX + index] = byte
-        }
-        val checkIndex = CarLED.DATA_START_INDEX + dataLength
-        byteArray[checkIndex] =
-            byteArray.filterIndexed { index, _ -> index < checkIndex }.sum().toByte()
-        return byteArray.copyOfRange(0, checkIndex + 1).apply {
-            Timber.d("command ${this.toHexString()}")
+        headerArray[CarLED.COMMAND_BYTE_INDEX] = command
+        headerArray[CarLED.DATA_LENGTH_INDEX] = dataLength
+        return headerArray.plus(data).let { bytearray ->
+            bytearray.plus(bytearray.sum().toByte()).apply {
+                Timber.d("send command ${this.toHexString()}")
+            }
         }
     }
 
@@ -85,18 +83,22 @@ class SerialPortViewModel : ViewModel() {
             }
     }
 
+    private fun writeCommands(commands: ByteArray) {
+        serialPortList.forEach { it.outputStream.write(commands) }
+    }
+
     fun writeCarStatus(status: CarLED.Status) {
         val statusBytes = getCommandBytes(
             CarLED.COMMAND_BYTE_WRITE_STATUS,
             0x01,
             status.value
         )
-        serialPortList.forEach { it.outputStream.write(statusBytes) }
+        writeCommands(statusBytes)
     }
 
     fun readCarStatus() {
         val statusBytes = getCommandBytes(CarLED.COMMAND_BYTE_READ_STATUS, 0x00)
-        serialPortList.forEach { it.outputStream.write(statusBytes) }
+        writeCommands(statusBytes)
     }
 
 
@@ -108,13 +110,14 @@ class SerialPortViewModel : ViewModel() {
             status.charsetColor,
             *status.charset.toHexByteArray() /* 36*/
         )
-        serialPortList.forEach { it.outputStream.write(charsetBytes) }
+        writeCommands(charsetBytes)
     }
 
 
+    @Suppress("unused")
     fun readCharset(status: CarLED.Status) {
         val charsetBytes = getCommandBytes(CarLED.COMMAND_BYTE_READ_CHARSET, 0x01, status.value)
-        serialPortList.forEach { it.outputStream.write(charsetBytes) }
+        writeCommands(charsetBytes)
     }
 
     fun startMarquee() {
@@ -122,7 +125,7 @@ class SerialPortViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             while (isActive && isMarquee) {
                 CarLED.Status.values().forEach { status ->
-                    if (status != CarLED.Status.NULL && isMarquee) {
+                    if (status != CarLED.Status.CLOSE && isMarquee) {
                         writeCarStatus(status)
                         delay(5000L)
                     }
@@ -130,6 +133,38 @@ class SerialPortViewModel : ViewModel() {
             }
         }
     }
+
+    fun updateFirmware(context: Context) {
+        val firmware = File(context.filesDir.path, "ledMatrixApp.bin")
+        if (!firmware.exists() || !firmware.canRead()) {
+            return
+        }
+        val firmwareData = firmware.readBytes()
+        val firmwareLength = firmwareData.size.toUInt32ByteArray()
+        val sum = firmwareData.sum().toUInt32ByteArray()
+        Timber.d("firmware size is ${firmwareLength.toHexString()}")
+        Timber.d("firmware check sum is ${sum.toHexString()}")
+        val loaderCommands = getCommandBytes(
+            CarLED.COMMAND_BYTE_LOADER,
+            0x08,
+            *firmwareLength,
+            *sum,
+        )
+        writeCommands(loaderCommands)
+        var downloadCommands: ByteArray
+        firmwareData.asSequence().chunked(0x80).forEachIndexed { index, list ->
+            Timber.d("write data $index ${list.size}")
+            downloadCommands = getCommandBytes(
+                CarLED.COMMAND_BYTE_DOWNLOAD_FIRMWARE, //命令字 0x12
+                (list.size + 5).toByte(), //数据区长度 5+N
+                *(index * 0x80).toUInt32ByteArray(),// 文件偏移 4 字节
+                list.size.toByte(),//数据块长度 固定 128 字节
+                *list.toByteArray()//数据块
+            )
+            writeCommands(downloadCommands)
+        }
+    }
+
 
     fun stopMarquee() {
         isMarquee = false
@@ -142,13 +177,14 @@ class SerialPortViewModel : ViewModel() {
             runCatching {
                 while (isActive) {
                     serialPort.inputStream.read(buffer)
+                    val result = getResponseResult(buffer)
                     if (buffer[CarLED.COMMAND_BYTE_INDEX] == CarLED.RESULT_BYTE_READ_STATUS) {
-                        status = when (getResponseResult(buffer)[0]) {
+                        status = when (result[0]) {
                             CarLED.Status.SUBSCRIBE.value -> CarLED.Status.SUBSCRIBE
                             CarLED.Status.EMPTY.value -> CarLED.Status.EMPTY
                             CarLED.Status.RUNNING.value -> CarLED.Status.RUNNING
                             CarLED.Status.REST.value -> CarLED.Status.REST
-                            else -> CarLED.Status.NULL
+                            else -> CarLED.Status.CLOSE
                         }
                         when (path) {
                             DEVICE_TTYS3 -> {

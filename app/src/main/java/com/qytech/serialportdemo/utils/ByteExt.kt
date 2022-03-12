@@ -27,3 +27,12 @@ fun Byte.toHexString() = "%02x ".format(this).uppercase()
 fun ByteArray.toHexString() = joinToString("") {
     it.toHexString()
 }.uppercase(Locale.getDefault())
+
+fun Int.toUInt32ByteArray(): ByteArray {
+    val bytes = ByteArray(4)
+    bytes[3] = (this and 0xFFFF).toByte()
+    bytes[2] = ((this ushr 8) and 0xFFFF).toByte()
+    bytes[1] = ((this ushr 16) and 0xFFFF).toByte()
+    bytes[0] = ((this ushr 24) and 0xFFFF).toByte()
+    return bytes
+}
