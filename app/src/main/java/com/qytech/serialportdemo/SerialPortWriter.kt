@@ -30,7 +30,8 @@ fun SerialPortView(
     onCheckedChange: (Boolean) -> Unit = {},
     onWriteCharset: (CarLED.Status) -> Unit = {},
     onWriteStatusClick: (CarLED.Status) -> Unit = {},
-    onUpdateFirmwareClick: () -> Unit = {}
+    onUpdateFirmwareClick: () -> Unit = {},
+    onCustomMessageClick: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -132,6 +133,24 @@ fun SerialPortView(
             )
         }
 
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text("Show custom message", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            StatusButton(
+                modifier = Modifier
+                    .weight(1.0f)
+                    .padding(16.dp),
+                onClickListener = onCustomMessageClick,
+                status = CarLED.Status.SUBSCRIBE,
+                text = "Show Custom"
+            )
+        }
+
     }
 }
 
@@ -162,6 +181,9 @@ fun SerialPortWrite(viewModel: SerialPortViewModel = viewModel()) {
         },
         onUpdateFirmwareClick = {
             viewModel.updateFirmware(context)
+        },
+        onCustomMessageClick = {
+            viewModel.showCustomMessage()
         }
     )
 

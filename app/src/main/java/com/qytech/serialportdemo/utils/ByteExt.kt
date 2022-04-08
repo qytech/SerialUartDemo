@@ -36,3 +36,9 @@ fun Int.toUInt32ByteArray(): ByteArray {
     bytes[0] = ((this ushr 24) and 0xFFFF).toByte()
     return bytes
 }
+
+fun IntArray.toByteArray(): ByteArray =
+    this.foldIndexed(ByteArray(this.size)) { i, a, v -> a.apply { set(i, v.toByte()) } }
+
+fun Array<out Int>.toByteArray(): ByteArray =
+    this.foldIndexed(ByteArray(this.size)) { i, a, v -> a.apply { set(i, v.toByte()) } }
