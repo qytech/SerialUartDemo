@@ -26,6 +26,9 @@ import java.io.OutputStream;
 
 import android.util.Log;
 
+/**
+ * @author google
+ */
 public class SerialPort {
 
     private static final String TAG = "SerialPort";
@@ -33,11 +36,12 @@ public class SerialPort {
     /**
      * Do not remove or rename the field mFd: it is used by native method close();
      */
-    private FileDescriptor mFd;
-    private FileInputStream mFileInputStream;
-    private FileOutputStream mFileOutputStream;
+    @SuppressWarnings("FieldCanBeLocal")
+    private final FileDescriptor mFd;
+    private final FileInputStream mFileInputStream;
+    private final FileOutputStream mFileOutputStream;
 
-    public SerialPort(File device, int baudrate, int flags) throws SecurityException, IOException {
+    public SerialPort(File device, int baudRate, int flags) throws SecurityException, IOException {
 
         /* Check access permission */
         if (!device.canRead() || !device.canWrite()) {
@@ -58,7 +62,7 @@ public class SerialPort {
             }
         }
 
-        mFd = open(device.getAbsolutePath(), baudrate, flags);
+        mFd = open(device.getAbsolutePath(), baudRate, flags);
         if (mFd == null) {
             Log.e(TAG, "native open returns null");
             throw new IOException();

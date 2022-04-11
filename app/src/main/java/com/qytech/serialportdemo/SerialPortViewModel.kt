@@ -5,11 +5,11 @@ import android_serialport_api.SerialPort
 import android_serialport_api.SerialPortFinder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.qytech.serialportbase.extensions.asHexLower
+import com.qytech.serialportbase.extensions.hexAsByteArray
 import com.qytech.serialportdemo.model.CarLED
-import com.qytech.serialportdemo.utils.toByteArray
-import com.qytech.serialportdemo.utils.toHexByteArray
-import com.qytech.serialportdemo.utils.toHexString
-import com.qytech.serialportdemo.utils.toUInt32ByteArray
+import com.qytech.serialportbase.extensions.toByteArray
+import com.qytech.serialportbase.extensions.toUInt32ByteArray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,7 +69,7 @@ class SerialPortViewModel : ViewModel() {
         headerArray[CarLED.DATA_LENGTH_INDEX] = dataLength
         return headerArray.plus(data).let { bytearray ->
             bytearray.plus(bytearray.sum().toByte()).apply {
-                Timber.d("send command ${this.toHexString()}")
+                Timber.d("send command ${this.asHexLower}")
             }
         }
     }
@@ -80,7 +80,7 @@ class SerialPortViewModel : ViewModel() {
         val buffer = byteArray.copyOfRange(0, CarLED.DATA_START_INDEX + dataLength + 1)
         return buffer.copyOfRange(CarLED.DATA_START_INDEX, CarLED.DATA_START_INDEX + dataLength)
             .apply {
-                Timber.d("result ${buffer.toHexString()} data ${this.toHexString()}")
+                Timber.d("result ${buffer.asHexLower} data ${this.asHexLower}")
             }
     }
 
@@ -109,7 +109,7 @@ class SerialPortViewModel : ViewModel() {
             0x26,/* 38*/
             status.value,
             status.charsetColor,
-            *status.charset.toHexByteArray() /* 36*/
+            *status.charset.hexAsByteArray /* 36*/
         )
         writeCommands(charsetBytes)
     }
@@ -162,6 +162,8 @@ class SerialPortViewModel : ViewModel() {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
         ).toByteArray()
+
+
         val loaderCommands = getCommandBytes(
             CarLED.COMMAND_BYTE_SHOW,
             0xC1.toByte(),
@@ -180,8 +182,8 @@ class SerialPortViewModel : ViewModel() {
         val firmwareData = firmware.readBytes()
         val firmwareLength = firmwareData.size.toUInt32ByteArray()
         val sum = firmwareData.sum().toUInt32ByteArray()
-        Timber.d("firmware size is ${firmwareLength.toHexString()}")
-        Timber.d("firmware check sum is ${sum.toHexString()}")
+        Timber.d("firmware size is ${firmwareLength.asHexLower}")
+        Timber.d("firmware check sum is ${sum.asHexLower}")
         val loaderCommands = getCommandBytes(
             CarLED.COMMAND_BYTE_LOADER,
             0x08,
