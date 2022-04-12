@@ -10,6 +10,10 @@ pluginManagement {
         id 'org.jetbrains.kotlin.android' version '1.6.10'
     }
 }
+
+//Using dependency catalogs requires the activation of the matching feature preview.
+enableFeaturePreview("VERSION_CATALOGS")
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
